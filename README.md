@@ -1,10 +1,8 @@
 
 # Shopify Wishlist App
 
-A Shopify Wishlist App that can be used seamlessly with the [Shopify Wishlist](https://github.com/dlerm/shopify-wishlist) theme files.
-
 ### Overview
-This is a back-end solution meant for usage as a Shopify private app. The app saves customer wishlists into metafields to avoid the need for an external data store.
+This is a back-end solution meant for usage as a Shopify private app. The app saves customer product wishlist into metafields to avoid the need for an external data store.
 
 ### How It Works
 The app creates & updates a customer metafield that stores a string list of product handles (comma separated).
@@ -28,13 +26,13 @@ The front-end can make requests to the app's endpoints to fetch, create, update 
 # Comma separated for multiple origins
 ALLOWED_ORIGINS=https://customer-wishlist.myshopify.com
 
-# The "myshopify" domain without the "myshopify.com" ending
-SHOPIFY_DOMAIN=customer-wishlist
+# The "myshopify" domain
+SHOPIFY_DOMAIN=customer-wishlist.myshopify.com
 
 # Shopify private app key
 API_KEY=xxxxxxxxxxxxxxxxxxx
 
-# Shopify private app password/secret
+# Shopify private app password/secret/access_token
 API_PASSWORD=xxxxxxxxxxxxxxxxxxx
 ```
 
@@ -42,7 +40,7 @@ API_PASSWORD=xxxxxxxxxxxxxxxxxxx
 
 All endpoints require a single `:id` parameter in the URL which should represent a unique Shopify customer ID. Each request type may have extra data needed to fulfill the request, see below.
 
-##### GET `/wishlist/:id`
+##### GET `/wishlist/:customerId`
 ---
 **Query Parameters**
 |Name|Required|Description|
@@ -91,7 +89,7 @@ All endpoints require a single `:id` parameter in the URL which should represent
 }
 ```
 
-##### POST `/wishlist/:id`
+##### POST `/wishlist/:customerId`
 ---
 **Body Parameters**
 |Name|Required|Description|
@@ -113,7 +111,7 @@ All endpoints require a single `:id` parameter in the URL which should represent
     }
 }
 ```
-##### DELETE `/wishlist/:id`
+##### DELETE `/wishlist/:customerId`
 ---
 **Parameters** - None
 
