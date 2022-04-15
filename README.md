@@ -18,6 +18,7 @@ The front-end can make requests to the app's endpoints to fetch, create, update 
 1. Host this app on a server of your choice
 2. Setup your server's environment variables
 3. Query the app endpoints (via Javascript) from your Shopify theme to display or manipulate a customer's wishlist
+4. If NODE_ENV variable runs as 'development', the app will allow no-origin requests, so you can test it from any rest client as **Postman**, make GET request directly from the browser url bar, etc. Then, on production, the app only let any request pass through ALLOWED_ORIGINS.
 
 ##### ENV Setup
 ```
@@ -155,3 +156,9 @@ Returns a cached version of the metafield to check how it looked like before bei
     }
 }
 ```
+---
+---
+### Testing notes
+ - If you wan't the testing to be faster and more flexible, please run the app on the server with NODE_ENV as 'development' so you'll be able to use any kind of rest client request generator, as Postman, REST Client, etc. (This requests has no origin on it, they are like server-side ones).
+ - Only *GET, POST, DELETE* → **/wishlist/:customerId** should respond. The other ones may return 403 status with **{ authorized: false }** JSON body.
+ - Sending no product *handle* prop on the POST route, should return a 400 Bad request error, with a error message.
