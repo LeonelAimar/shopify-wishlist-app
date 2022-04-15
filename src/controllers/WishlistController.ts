@@ -1,91 +1,17 @@
-import ApplicationError from '../helpers/ApplicationError.js'
-import { 
-    NewWishlistMetafieldGenerator, 
-    UpdateWishlistMetafieldGenerator, 
-    WishlistActionType 
-} from '../interfaces/WishlistInterfaces.js'
-import { MetafieldOwner } from '../interfaces/ShopifyInterfaces.js'
 import { NextFunction, Request, Response } from 'express'
-import Shopify, { IMetafield } from 'shopify-api-node'
-import config, { getShopifyConfig } from '../config/config.js'
+import { WishlistActionType } from '../interfaces/WishlistInterfaces.js'
+import { MetafieldOwner, MetafieldType } from '../interfaces/ShopifyInterfaces.js'
+import { Metafield } from '@shopify/shopify-api/dist/rest-resources/2022-04/index.js'
 
+import ApplicationError from '../helpers/ApplicationError.js'
+import ShopifyProvider from '../providers/ShopifyProvider.js'
 import { statusSuccess as status } from '../helpers/constants.js'
+import HelpersController from '../helpers/HelpersController.js'
+import config from '../config/config.js'
 
-const shopify = new Shopify(getShopifyConfig())
+const ShopifySDK = new ShopifyProvider()
 
 class WishlistController {
-    private generateMetafieldUpdatePackage( 
-        metafield: IMetafield, 
-        productHandle: string 
-    ): UpdateWishlistMetafieldGenerator {
-        const  { id, value } = metafield;
-
-        let wishlist: string | string[] = String(value).split(',');
-        const itemIndex = wishlist.indexOf(productHandle);
-        const removeItem = itemIndex !== -1;
-
-        if (removeItem) wishlist.splice(itemIndex, 1);
-        else wishlist.push(productHandle);
-
-        // Delete
-        if (!wishlist.length)
-            return {
-                type: WishlistActionType.DELETE,
-                metafield: {
-                    id,
-                },
-            }
-        
-        // Update
-        wishlist = wishlist.join(',');
-        return {
-            type: WishlistActionType.UPDATE,
-            metafield: {
-                id,
-            },
-            body: {
-                id,
-                value_type: 'string',
-                value: wishlist,
-            },
-        }; 
-    }
-
-    private generateNewMetafieldPackage( customerId: number, productHandle: string ): NewWishlistMetafieldGenerator {
-        const { METAFIELD } = config
-
-        return {
-            type: WishlistActionType.CREATE,
-            customer: {
-                id: customerId,
-            },
-            body: {
-                namespace: METAFIELD.WISHLIST_NAMESPACE,
-                key: METAFIELD.WISHLIST_KEY,
-                type: 'string',
-                value: productHandle,
-                owner_id: customerId,
-                owner_resource: MetafieldOwner.CUSTOMER
-            },
-        }
-    }
-
-    private async getWishlistMetafield( ownerId: number ) {
-        const { METAFIELD } = config
-        
-        const metafields = await shopify.metafield.list({
-            metafield: {
-                owner_resource: 'customer',
-                owner_id: ownerId
-            }
-        })
-
-        return metafields.find(({ namespace, key }) => 
-            namespace === METAFIELD.WISHLIST_NAMESPACE &&
-            key === METAFIELD.WISHLIST_KEY
-        )
-    }
-
     private async handleErrors( error: any, next: NextFunction ) {
         const { statusCode, statusMessage } = error
         const errorStatusCode = statusCode || error.code || 500;
@@ -96,6 +22,48 @@ class WishlistController {
             ...error,
         }))
     }
+
+    private async getOnlyWishlistMetafields( customerId: number | string ): Promise<Metafield | undefined> {
+        const { METAFIELD } = config
+
+        const metafields = await ShopifySDK.getMetafieldsByOwner({
+            id: Number(customerId),
+            resourceType: MetafieldOwner.CUSTOMER
+        })
+        
+        return metafields.find(({ namespace, key }) => 
+            namespace === METAFIELD.WISHLIST_NAMESPACE &&
+            key === METAFIELD.WISHLIST_KEY
+        )
+    }
+
+    private async handleUpdateMeta( metafield: Metafield, handle: string ) {
+        const arrayValue = (metafield.value as string).split(',')
+        const existHandle = arrayValue.includes(handle)
+        const excludeFilterFn = (x: string) => x !== handle
+
+        metafield.value = HelpersController.joinCommaSeparated( 
+            existHandle ? arrayValue.filter(excludeFilterFn) : [...arrayValue, handle]
+        )
+        
+        return {
+            type: !!metafield.value ? WishlistActionType.UPDATE : WishlistActionType.DELETE
+        }
+    }
+
+    private async handleCreateMeta( customerId: number | string, handle: string ) {
+        const { METAFIELD } = config
+
+        const metafield = await ShopifySDK.createMetafieldsByOwner({
+            customer_id: Number(customerId),
+            namespace: METAFIELD.WISHLIST_NAMESPACE,
+            key: METAFIELD.WISHLIST_KEY,
+            value: handle,
+            type: MetafieldType.STRING
+        })
+
+        return metafield
+    }
     // ------------------ END PRIVATE
 
     public async getWishlistItems( req: Request, res: Response, next: NextFunction ) {
@@ -103,13 +71,14 @@ class WishlistController {
             const { customerId } = req.params
             const { format } = req.query
 
-            const metafield = await this.getWishlistMetafield( Number(customerId) )
+            const metafield = await this.getOnlyWishlistMetafields( customerId )
+            metafield && delete metafield.session
 
             const wishlist = !!!metafield
                 ? []
                 : format === 'product'
-                    ? await shopify.product.list({ handle: metafield.value })
-                    : String(metafield.value).split(',')
+                    ? await ShopifySDK.getProductsByHandles( metafield.value as string )
+                    : (metafield.value as string).split(',')
 
             return res.json({
                 id: Number(customerId),
@@ -127,32 +96,36 @@ class WishlistController {
             const { customerId } = req.params
             const { handle } = req.body
 
-            const wishlistMeta = await this.getWishlistMetafield( Number(customerId) )
+            if ( !!!handle ) 
+                throw {
+                    message: 'You must provide a valid string product handle on the body request.',
+                    code: 400
+                }
+
+            const wishlistMeta = await this.getOnlyWishlistMetafields( customerId )
+            const wishlistMetaBackup = { ...wishlistMeta } as Metafield
 
             const payload = wishlistMeta
-                ? this.generateMetafieldUpdatePackage(wishlistMeta, handle)
-                : this.generateNewMetafieldPackage(Number(customerId), handle);
+                ? await this.handleUpdateMeta(wishlistMeta, handle)
+                : { type: WishlistActionType.CREATE }
 
-            let metafield = {};
+            let metafield = {} as Metafield;
 
             switch(payload.type) {
                 case WishlistActionType.CREATE:
-                    const cPayload = payload as NewWishlistMetafieldGenerator
-                    // metafield = await shopify.customer
-                    //     .update(cPayload.customer.id, payload.body)
-                    //     .then(() => cPayload.body.metafields[0])
-                    metafield = await shopify.metafield.create(cPayload.body)
+                    const createdMeta = await this.handleCreateMeta( customerId, handle )
+                    delete createdMeta.session
+                    metafield = createdMeta
                     break;
                 case WishlistActionType.UPDATE:
-                    const uPayload = payload as UpdateWishlistMetafieldGenerator
-                    metafield = await shopify.metafield
-                        .update(uPayload.metafield.id, uPayload.body)
+                    await wishlistMeta.save()
+                    delete wishlistMeta.session
+                    metafield = wishlistMeta
                     break;
                 case WishlistActionType.DELETE:
-                    const dPayload = payload as UpdateWishlistMetafieldGenerator
-                    metafield = await shopify.metafield
-                        .delete(dPayload.metafield.id)
-                        .then(() => { return {} })
+                    await wishlistMeta.delete()
+                    delete wishlistMetaBackup.session
+                    metafield = wishlistMetaBackup
                     break;
                 default: break;
             };
@@ -170,11 +143,15 @@ class WishlistController {
         try {
             const { customerId } = req.params
 
-            const metafield = await this.getWishlistMetafield( Number(customerId) )
+            const metafield = await this.getOnlyWishlistMetafields( customerId )
 
-            const resolve = metafield
-                ? await shopify.metafield.delete(metafield.id)
-                : null;
+            let resolve = null
+
+            if ( !!metafield ) {
+                await metafield.delete()
+                delete metafield.session
+                resolve = metafield
+            }
 
             return res.json({
                 metafield: resolve,

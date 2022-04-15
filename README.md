@@ -1,10 +1,8 @@
 
 # Shopify Wishlist App
 
-A Shopify Wishlist App that can be used seamlessly with the [Shopify Wishlist](https://github.com/dlerm/shopify-wishlist) theme files.
-
 ### Overview
-This is a back-end solution meant for usage as a Shopify private app. The app saves customer wishlists into metafields to avoid the need for an external data store.
+This is a back-end solution meant for usage as a Shopify private app. The app saves customer product wishlist into metafields to avoid the need for an external data store.
 
 ### How It Works
 The app creates & updates a customer metafield that stores a string list of product handles (comma separated).
@@ -20,21 +18,31 @@ The front-end can make requests to the app's endpoints to fetch, create, update 
 1. Host this app on a server of your choice
 2. Setup your server's environment variables
 3. Query the app endpoints (via Javascript) from your Shopify theme to display or manipulate a customer's wishlist
+4. If NODE_ENV variable runs as 'development', the app will allow no-origin requests, so you can test it from any rest client as **Postman**, make GET request directly from the browser url bar, etc. Then, on production, the app only let any request pass through ALLOWED_ORIGINS.
 
 ##### ENV Setup
 ```
 # Origins/URLs that are allowed to make App/API requests
-# Inlcude the http/https protocols
+# Include the http/https protocols
 # Comma separated for multiple origins
 ALLOWED_ORIGINS=https://customer-wishlist.myshopify.com
 
-# The "myshopify" domain without the "myshopify.com" ending
-SHOPIFY_DOMAIN=customer-wishlist
+# Wishlist's metafield namespace
+WISHLIST_NAMESPACE=shopify_wishlist_app
+
+# Wishlist's metafield key
+WISHLIST_KEY=wishlist
+
+# Allowed scopes from the created app, copy them from app's dashboard (Comma separated)
+APP_SCOPES=read_products,write_products,read_product_listings,read_customers,write_customers,read_orders,write_orders,read_shipping,write_shipping,read_locations,read_inventory,write_inventory,read_checkouts,write_checkouts,read_shopify_payments_payouts,read_price_rules,write_price_rules,write_draft_orders
+
+# The "myshopify" domain
+SHOPIFY_DOMAIN=customer-wishlist.myshopify.com
 
 # Shopify private app key
 API_KEY=xxxxxxxxxxxxxxxxxxx
 
-# Shopify private app password/secret
+# Shopify private app password/secret/access_token
 API_PASSWORD=xxxxxxxxxxxxxxxxxxx
 ```
 
@@ -42,7 +50,7 @@ API_PASSWORD=xxxxxxxxxxxxxxxxxxx
 
 All endpoints require a single `:id` parameter in the URL which should represent a unique Shopify customer ID. Each request type may have extra data needed to fulfill the request, see below.
 
-##### GET `/wishlist/:id`
+##### GET `/wishlist/:customerId`
 ---
 **Query Parameters**
 |Name|Required|Description|
@@ -91,7 +99,7 @@ All endpoints require a single `:id` parameter in the URL which should represent
 }
 ```
 
-##### POST `/wishlist/:id`
+##### POST `/wishlist/:customerId`
 ---
 **Body Parameters**
 |Name|Required|Description|
@@ -102,10 +110,17 @@ All endpoints require a single `:id` parameter in the URL which should represent
 ```
 {
     "metafield": {
+        "id": <metafield-id>,
         "namespace": "shopify_wishlist_app",
         "key": "wishlist",
+        "value": "<product-handle>,<product-handle>,...",
         "value_type": "string",
-        "value": "<new-product-handle>,<product-handle>,..."
+        "description": null,
+        "owner_id": <customer-id>,
+        "created_at": <date>,
+        "updated_at": <date>
+        "owner_resource": "customer",
+        "admin_graphql_api_id": "gid://shopify/Metafield/<metafield-id>"
     },
     "status": {
         "message": "OK",
@@ -113,17 +128,37 @@ All endpoints require a single `:id` parameter in the URL which should represent
     }
 }
 ```
-##### DELETE `/wishlist/:id`
+##### DELETE `/wishlist/:customerId`
 ---
 **Parameters** - None
+---
+Returns a cached version of the metafield to check how it looked like before being deleted.
 
 **Response**
 ```
 {
-    "metafield": {},
+    "metafield": {
+        "id": <metafield-id>,
+        "namespace": "shopify_wishlist_app",
+        "key": "wishlist",
+        "value": "<product-handle>,<product-handle>,...",
+        "value_type": "string",
+        "description": null,
+        "owner_id": <customer-id>,
+        "created_at": <date>,
+        "updated_at": <date>
+        "owner_resource": "customer",
+        "admin_graphql_api_id": "gid://shopify/Metafield/<metafield-id>"
+    },
     "status": {
         "message": "OK",
         "code": 200
     }
 }
 ```
+---
+---
+### Testing notes
+ - If you wan't the testing to be faster and more flexible, please run the app on the server with NODE_ENV as 'development' so you'll be able to use any kind of rest client request generator, as Postman, REST Client, etc. (This requests has no origin on it, they are like server-side ones).
+ - Only *GET, POST, DELETE* → **/wishlist/:customerId** should respond. The other ones may return 403 status with **{ authorized: false }** JSON body.
+ - Sending no product *handle* prop on the POST route, should return a 400 Bad request error, with a error message.

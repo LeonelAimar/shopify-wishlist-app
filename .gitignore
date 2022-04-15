@@ -17,4 +17,5 @@ samples/
 ######################
 node_modules/
 *.env
+*.rest
 dist/

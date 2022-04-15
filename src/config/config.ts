@@ -6,6 +6,7 @@ const config = {
         API_KEY: process.env.API_KEY || '',
         API_PASSWORD: process.env.API_PASSWORD || '',
         DOMAIN: process.env.SHOPIFY_DOMAIN || '',
+        SCOPES: (process.env.APP_SCOPES || '').split(',')
     },
     METAFIELD: {
         WISHLIST_NAMESPACE: process.env.METAFIELD_NAMESPACE || 'shopify_wishlist_app',
@@ -19,8 +20,3 @@ const config = {
 }
 
 export default config
-
-export const getShopifyConfig = () => {
-    const { API_KEY: apiKey, API_PASSWORD: password, DOMAIN: shopName } = config.SHOPIFY;
-    return { shopName, apiKey, password };
-}

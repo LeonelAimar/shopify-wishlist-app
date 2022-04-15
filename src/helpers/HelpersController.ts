@@ -1,4 +1,4 @@
-import ApplicationError from "./ApplicationError";
+import ApplicationError from "./ApplicationError.js";
 
 class HelpersController {
     static getShopifyConfig() {
@@ -12,6 +12,22 @@ class HelpersController {
             throw new ApplicationError(`Cannot initialize Shopify API Library. Missing values for: ${missing.join(', ')}`, 401, 'AuthorizationError');
 
         return  { API_KEY, API_PASSWORD, SHOPIFY_DOMAIN };
+    }
+
+    static sessionRemover<T>( classArray: T[] ): T[] {
+        return classArray.map( (obj: any) => {
+            if ( obj.session ) delete obj.session
+            Object.keys(obj).forEach( key => {
+                if ( Array.isArray( obj[key] ) ) 
+                    obj[key] = this.sessionRemover( obj[key] )
+            })
+
+            return obj
+        })
+    }
+
+    static joinCommaSeparated( array: any[] ) {
+        return array.join(',')
     }
 }
 
