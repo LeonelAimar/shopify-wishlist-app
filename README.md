@@ -26,6 +26,15 @@ The front-end can make requests to the app's endpoints to fetch, create, update 
 # Comma separated for multiple origins
 ALLOWED_ORIGINS=https://customer-wishlist.myshopify.com
 
+# Wishlist's metafield namespace
+WISHLIST_NAMESPACE=shopify_wishlist_app
+
+# Wishlist's metafield key
+WISHLIST_KEY=wishlist
+
+# Allowed scopes from the created app, copy them from app's dashboard (Comma separated)
+APP_SCOPES=read_products,write_products,read_product_listings,read_customers,write_customers,read_orders,write_orders,read_shipping,write_shipping,read_locations,read_inventory,write_inventory,read_checkouts,write_checkouts,read_shopify_payments_payouts,read_price_rules,write_price_rules,write_draft_orders
+
 # The "myshopify" domain
 SHOPIFY_DOMAIN=customer-wishlist.myshopify.com
 

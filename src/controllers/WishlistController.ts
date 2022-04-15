@@ -96,6 +96,12 @@ class WishlistController {
             const { customerId } = req.params
             const { handle } = req.body
 
+            if ( !!!handle ) 
+                throw {
+                    message: 'You must provide a valid string product handle on the body request.',
+                    code: 400
+                }
+
             const wishlistMeta = await this.getOnlyWishlistMetafields( customerId )
             const wishlistMetaBackup = { ...wishlistMeta } as Metafield
 
