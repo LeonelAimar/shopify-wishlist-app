@@ -15,14 +15,14 @@ class HelpersController {
     }
 
     static sessionRemover<T>( classArray: T[] ): T[] {
-        return classArray.map( (something: any) => {
-            if ( something.session ) delete something.session
-            Object.keys(something).forEach( value => {
-                if ( Array.isArray(something[value]) ) 
-                    something[value] = this.sessionRemover(something[value])
+        return classArray.map( (obj: any) => {
+            if ( obj.session ) delete obj.session
+            Object.keys(obj).forEach( key => {
+                if ( Array.isArray( obj[key] ) ) 
+                    obj[key] = this.sessionRemover( obj[key] )
             })
 
-            return something
+            return obj
         })
     }
 
