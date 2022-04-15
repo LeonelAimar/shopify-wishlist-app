@@ -22,7 +22,7 @@ The front-end can make requests to the app's endpoints to fetch, create, update 
 ##### ENV Setup
 ```
 # Origins/URLs that are allowed to make App/API requests
-# Inlcude the http/https protocols
+# Include the http/https protocols
 # Comma separated for multiple origins
 ALLOWED_ORIGINS=https://customer-wishlist.myshopify.com
 
@@ -109,10 +109,17 @@ All endpoints require a single `:id` parameter in the URL which should represent
 ```
 {
     "metafield": {
+        "id": <metafield-id>,
         "namespace": "shopify_wishlist_app",
         "key": "wishlist",
+        "value": "<product-handle>,<product-handle>,...",
         "value_type": "string",
-        "value": "<new-product-handle>,<product-handle>,..."
+        "description": null,
+        "owner_id": <customer-id>,
+        "created_at": <date>,
+        "updated_at": <date>
+        "owner_resource": "customer",
+        "admin_graphql_api_id": "gid://shopify/Metafield/<metafield-id>"
     },
     "status": {
         "message": "OK",
@@ -123,11 +130,25 @@ All endpoints require a single `:id` parameter in the URL which should represent
 ##### DELETE `/wishlist/:customerId`
 ---
 **Parameters** - None
+---
+Returns a cached version of the metafield to check how it looked like before being deleted.
 
 **Response**
 ```
 {
-    "metafield": {},
+    "metafield": {
+        "id": <metafield-id>,
+        "namespace": "shopify_wishlist_app",
+        "key": "wishlist",
+        "value": "<product-handle>,<product-handle>,...",
+        "value_type": "string",
+        "description": null,
+        "owner_id": <customer-id>,
+        "created_at": <date>,
+        "updated_at": <date>
+        "owner_resource": "customer",
+        "admin_graphql_api_id": "gid://shopify/Metafield/<metafield-id>"
+    },
     "status": {
         "message": "OK",
         "code": 200
