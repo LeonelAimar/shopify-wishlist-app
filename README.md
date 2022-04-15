@@ -161,4 +161,4 @@ Returns a cached version of the metafield to check how it looked like before bei
 ### Testing notes
  - If you wan't the testing to be faster and more flexible, please run the app on the server with NODE_ENV as 'development' so you'll be able to use any kind of rest client request generator, as Postman, REST Client, etc. (This requests has no origin on it, they are like server-side ones).
  - Only *GET, POST, DELETE* → **/wishlist/:customerId** should respond. The other ones may return 403 status with **{ authorized: false }** JSON body.
- - Sending no product *handle* prop on the POST route, should return a 400 Bad request error, with a error message.
+ - Sending no product *handle* prop on the POST route, should return a 400 Bad request error, with an error message.
