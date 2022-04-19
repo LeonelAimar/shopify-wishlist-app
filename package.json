@@ -17,7 +17,8 @@
         "cors": "^2.8.5",
         "cross-env": "^7.0.3",
         "dotenv": "^10.0.0",
-        "express": "^4.17.3"
+        "express": "^4.17.3",
+        "serverless-http": "^3.0.1"
     },
     "repository": {
         "type": "git",

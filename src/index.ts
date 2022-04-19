@@ -1,4 +1,5 @@
 import express from 'express';
+import serverless from 'serverless-http';
 import cors from 'cors';
 import config from './config/config.js'
 
@@ -44,4 +45,5 @@ class Server {
 }
 
 const server = new Server()
-server.listen()
+// server.listen()
+export const handler = serverless(server.app)
